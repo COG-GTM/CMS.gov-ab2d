@@ -50,7 +50,7 @@ jobs:
       - uses: actions/setup-java@v4
         with:
           distribution: 'adopt'
-          java-version: '17'
+          java-version: '21'
 
       - name: Assume role in target account
         uses: aws-actions/configure-aws-credentials@v4
