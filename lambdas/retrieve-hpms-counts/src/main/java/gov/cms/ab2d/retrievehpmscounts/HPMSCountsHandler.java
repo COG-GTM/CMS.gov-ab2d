@@ -121,7 +121,7 @@ public class HPMSCountsHandler implements RequestStreamHandler {
     }
 
     // Provide a custom implementation of `SNSClient` for greenfield deployments - It is not possible to
-    // upgrade this lambda (Java 11) to a recent version of `ab2d-sns-client` (Java 17) due to incompatibility
+    // upgrade this lambda (Java 11) to a recent version of `ab2d-sns-client` (Java 21) due to incompatibility
     public static class AB2DSNSClientOverride implements SNSClient {
 
         private static final Logger log = LoggerFactory.getLogger(AB2DSNSClientOverride.class);

@@ -27,7 +27,7 @@
 
     <properties>
         <project.root>${basedir}</project.root>
-        <java.version>17</java.version>
+        <java.version>21</java.version>
         <hapi.version>8.4.0</hapi.version>
         <mockito.core.version>5.16.1</mockito.core.version>
         <okhttp3.version>5.0.0</okhttp3.version>
