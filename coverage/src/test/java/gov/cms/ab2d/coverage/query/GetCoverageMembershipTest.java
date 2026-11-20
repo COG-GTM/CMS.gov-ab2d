@@ -180,6 +180,38 @@ class GetCoverageMembershipTest {
         toString(result));
     }
 
+    @Test
+    void test_Z5555_row_in_both_tables_counted_once_against_limit() {
+        val result = query.getCoverageMembership("Z5555", YEARS, false, 4);
+        assertEquals("""
+        patientId=10, year=2025, month=11
+        patientId=10, year=2025, month=12
+        patientId=10, year=2026, month=3
+        patientId=11, year=2025, month=11
+        """,
+        toString(result));
+    }
+
+    @Test
+    void test_Z5555_opted_out_rows_do_not_count_against_limit() {
+        var result = query.getCoverageMembership("Z5555", YEARS, true, 4);
+        assertEquals("""
+        patientId=10, year=2025, month=11
+        patientId=10, year=2025, month=12
+        patientId=10, year=2026, month=3
+        patientId=12, year=2025, month=11
+        """,
+        toString(result));
+
+        result = query.getCoverageMembership("Z5555", YEARS, true, 3, 11L);
+        assertEquals("""
+        patientId=12, year=2025, month=11
+        patientId=12, year=2025, month=12
+        patientId=12, year=2026, month=3
+        """,
+        toString(result));
+    }
+
     String toString(List<CoverageMembership> list) {
         val sb = new StringBuilder();
         list.forEach(item -> sb.append(toString(item)).append("\n"));
