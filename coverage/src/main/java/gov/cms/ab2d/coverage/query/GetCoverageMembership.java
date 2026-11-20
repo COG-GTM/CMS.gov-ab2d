@@ -20,16 +20,25 @@ public class GetCoverageMembership extends CoverageV3BaseQuery {
         this.mapper = new CoverageMembershipRowMapper();
     }
 
+    // Each union arm is ordered and limited on its own so Postgres can read it from the
+    // (patient_id, contract, year, month, current_mbi) unique index and stop after :limit rows,
+    // instead of de-duplicating every row of the contract on each page. The first :limit rows
+    // of the union are always among the first :limit rows of each arm. The opt-out join and
+    // year filter only look at a row's own columns, so they are applied inside each arm.
     private static final String SELECT_COVERAGE_WITHOUT_OPTOUT_WITHOUT_CURSOR =
     """
     select patient_id, current_mbi, year, month from (
-        select * from v3.coverage_v3
+        (select * from v3.coverage_v3
            where contract = :contract
            and current_mbi is not null
+           order by patient_id, year, month, current_mbi
+           limit :limit)
         union
-        select * from v3.coverage_v3_historical
+        (select * from v3.coverage_v3_historical
            where contract = :contract
            and current_mbi is not null
+           order by patient_id, year, month, current_mbi
+           limit :limit)
         order by patient_id, year asc, month asc
         limit :limit
     )
@@ -40,15 +49,19 @@ public class GetCoverageMembership extends CoverageV3BaseQuery {
     private static final String SELECT_COVERAGE_WITHOUT_OPTOUT_WITH_CURSOR =
     """
     select patient_id, current_mbi, year, month from (
-        select * from v3.coverage_v3
+        (select * from v3.coverage_v3
            where contract = :contract
            and current_mbi is not null
            and patient_id >= :patient_id
+           order by patient_id, year, month, current_mbi
+           limit :limit)
         union
-        select * from v3.coverage_v3_historical
+        (select * from v3.coverage_v3_historical
            where contract = :contract
            and current_mbi is not null
            and patient_id >= :patient_id
+           order by patient_id, year, month, current_mbi
+           limit :limit)
         order by patient_id, year asc, month asc
         limit :limit
     )
@@ -60,18 +73,24 @@ public class GetCoverageMembership extends CoverageV3BaseQuery {
     """
     select patient_id, current_mbi, year, month from
     (
-       select * from v3.coverage_v3
-           where contract = :contract
-           and current_mbi is not null
+       (select c.* from v3.coverage_v3 c
+           left join current_mbi m on c.current_mbi = m.mbi
+           where c.contract = :contract
+           and c.current_mbi is not null
+           and c.year in (:years)
+           and m.share_data is not false
+           order by c.patient_id, c.year, c.month, c.current_mbi
+           limit :limit)
        union
-       select * from  v3.coverage_v3_historical
-           where contract = :contract
-           and current_mbi is not null
+       (select c.* from v3.coverage_v3_historical c
+           left join current_mbi m on c.current_mbi = m.mbi
+           where c.contract = :contract
+           and c.current_mbi is not null
+           and c.year in (:years)
+           and m.share_data is not false
+           order by c.patient_id, c.year, c.month, c.current_mbi
+           limit :limit)
     ) as union_results
-    left join current_mbi on union_results.current_mbi = current_mbi.mbi
-    where year in (:years)
-    and current_mbi is not null
-    and share_data is not false
     order by patient_id asc, year asc, month asc
     limit :limit
     """;
@@ -80,20 +99,26 @@ public class GetCoverageMembership extends CoverageV3BaseQuery {
     """
     select patient_id, current_mbi, year, month from
     (
-       select * from v3.coverage_v3
-           where contract = :contract
-           and current_mbi is not null
-           and patient_id >= :patient_id
+       (select c.* from v3.coverage_v3 c
+           left join current_mbi m on c.current_mbi = m.mbi
+           where c.contract = :contract
+           and c.current_mbi is not null
+           and c.patient_id >= :patient_id
+           and c.year in (:years)
+           and m.share_data is not false
+           order by c.patient_id, c.year, c.month, c.current_mbi
+           limit :limit)
        union
-       select * from  v3.coverage_v3_historical
-           where contract = :contract
-           and current_mbi is not null
-           and patient_id >= :patient_id
+       (select c.* from v3.coverage_v3_historical c
+           left join current_mbi m on c.current_mbi = m.mbi
+           where c.contract = :contract
+           and c.current_mbi is not null
+           and c.patient_id >= :patient_id
+           and c.year in (:years)
+           and m.share_data is not false
+           order by c.patient_id, c.year, c.month, c.current_mbi
+           limit :limit)
     ) as union_results
-    left join current_mbi on union_results.current_mbi = current_mbi.mbi
-    where year in (:years)
-    and current_mbi is not null
-    and share_data is not false
     order by patient_id asc, year asc, month asc
     limit :limit
     """;
